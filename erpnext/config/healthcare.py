@@ -48,7 +48,13 @@ def get_data():
 					"type": "doctype",
 					"name": "Medical Code",
 					"label": _("Medical Code")
-				}
+				},
+				{
+					"type": "doctype",
+					"name": "Practitioner Event",
+					"label": _("Practitioner Event"),
+					"onboard": 1
+				},
 			]
 		},
 		{
