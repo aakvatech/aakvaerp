@@ -304,6 +304,7 @@ erpnext.pos.PointOfSale = erpnext.taxes_and_totals.extend({
 		this.doc = JSON.parse(localStorage.getItem('doc'));
 		this.meta = r.message.meta;
 		this.item_data = r.message.items;
+		this.cost_center = r.message.cost_center;
 		this.item_groups = r.message.item_groups;
 		this.customers = r.message.customers;
 		this.serial_no_data = r.message.serial_no_data;
@@ -425,6 +426,19 @@ erpnext.pos.PointOfSale = erpnext.taxes_and_totals.extend({
 		});
 
 		this.search_item.make_input();
+		
+		
+		this.cost_center = frappe.ui.form.make_control({
+			df: {
+				"fieldtype": "Data",
+				"label": __("Cost Center"),
+				"fieldname": "cost_center",
+				"placeholder": __("Search Cost Center")
+			},
+			parent: this.wrapper.find(".search-cost-center"),
+			only_input: true,
+		});
+		this.cost_center.make_input();
 
 		this.search_item.$input.on("keypress", function (event) {
 
@@ -436,7 +450,13 @@ erpnext.pos.PointOfSale = erpnext.taxes_and_totals.extend({
 				}
 			}, 400);
 		});
-
+		
+		this.search_cost_center = this.wrapper.find('.search-cost-center');
+		
+		var dropdown_html = this.cost_center.map(function(cost_center) {
+			return "<li><a class='option' data-value='"+cost_center+"'>"+cost_center+"</a></li>";
+		}).join("");
+	
 		this.search_item_group = this.wrapper.find('.search-item-group');
 		sorted_item_groups = this.get_sorted_item_groups()
 		var dropdown_html = sorted_item_groups.map(function(item_group) {
