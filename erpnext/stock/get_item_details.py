@@ -366,7 +366,7 @@ def get_default_deferred_account(args, item, fieldname=None):
 	else:
 		return None
 
-def get_default_cost_center(args, item, item_group):
+def get_default_cost_center(args, item, item_group, company=None):
 	cost_center = None
 	if args.get('project'):
 		cost_center = frappe.db.get_value("Project", args.get("project"), "cost_center", cache=True)
@@ -377,7 +377,13 @@ def get_default_cost_center(args, item, item_group):
 		else:
 			cost_center = item.get('buying_cost_center') or item_group.get('buying_cost_center')
 
-	return cost_center or args.get("cost_center")
+	cost_center = cost_center or args.get("cost_center")
+
+	if (company and cost_center
+		and frappe.get_cached_value("Cost Center", cost_center, "company") != company):
+		return None
+
+	return cost_center
 
 def get_default_supplier(args, item, item_group):
 	return (item.get("default_supplier")
@@ -828,12 +834,12 @@ def get_price_list_currency(price_list):
 def get_price_list_uom_dependant(price_list):
 	if price_list:
 		result = frappe.db.get_value("Price List", {"name": price_list,
-			"enabled": 1}, ["name", "price_not_uom_dependant"], as_dict=True)
+			"enabled": 1}, ["name", "price_not_uom_dependent"], as_dict=True)
 
 		if not result:
 			throw(_("Price List {0} is disabled or does not exist").format(price_list))
 
-		return not result.price_not_uom_dependant
+		return not result.price_not_uom_dependent
 
 
 def get_price_list_currency_and_exchange_rate(args):
