@@ -375,6 +375,12 @@ erpnext.pos.PointOfSale = class PointOfSale {
 	}
 
 	submit_sales_invoice() {
+		for(var i = 0; i< this.frm.doc.items.length; i++ ){
+			console.log( document.querySelector('input[data-fieldname="cost_center"]').value)
+			this.frm.doc.items[i].cost_center = document.querySelector('input[data-fieldname="cost_center"]').value;
+						//this.frm.doc.items[i].cost_center =  this.cost_center_field.get_value()
+		}
+		this.frm.doc.cost_center = document.querySelector('input[data-fieldname="cost_center"]').value;
 		this.frm.savesubmit()
 			.then((r) => {
 				if (r && r.doc) {
@@ -652,6 +658,7 @@ class POSCart {
 
 	make() {
 		this.make_dom();
+		this.make_cost_center_field();
 		this.make_customer_field();
 		this.make_loyalty_points();
 		this.make_numpad();
@@ -876,6 +883,50 @@ class POSCart {
 
 		this.customer_field.set_value(this.frm.doc.customer);
 	}
+	
+	make_cost_center_field() {
+		this.cost_center_field = frappe.ui.form.make_control({
+			df: {
+				fieldtype: 'Link',
+				label: 'Cost Center',
+				fieldname: 'cost_center',
+				options: 'Cost Center',
+				reqd: 0,
+				get_query: function() {
+						return {
+							filters: {
+								"is_group":0
+							}
+						}
+				},
+				onchange: () => {
+					frappe.call({
+						method: "propms.pos.get_pos_data",
+						freeze: true,
+						args: {
+							'cost_center':this.cost_center_field.get_value()
+						}
+					}).then(r => {
+						if (r.message.hasOwnProperty('customer')){
+						this.customer_field.set_value(r.message.customer);
+						this.frm.set_value('customer', r.message.customer);
+						}
+						//for(var i = 0; i< r.message.lease_item.length; i++ ){
+						//	this.events.on_field_change(r.message.lease_item[i].lease_item);
+						//}
+	
+					});
+						
+				},
+			},
+			parent: this.wrapper.find('.customer-field'),
+			render_input: true
+		});
+		
+		
+	}
+
+
 
 
 	make_loyalty_points() {

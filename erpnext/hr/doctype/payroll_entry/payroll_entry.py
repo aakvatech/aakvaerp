@@ -249,7 +249,9 @@ class PayrollEntry(Document):
 			for data in loan_details:
 				accounts.append({
 						"account": data.loan_account,
-						"credit_in_account_currency": data.principal_amount
+						"credit_in_account_currency": data.principal_amount,
+                                                "reference_type": "Loan",
+                                                "reference_name": data.loan
 					})
 
 				if data.interest_amount and not data.interest_income_account:
