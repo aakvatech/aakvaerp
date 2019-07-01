@@ -252,6 +252,8 @@ class PayrollEntry(Document):
 						"credit_in_account_currency": data.principal_amount,
                                                 "reference_type": "Loan",
                                                 "reference_name": data.loan
+						"reference_type": "Loan",
+						"reference_name": data.loan
 					})
 
 				if data.interest_amount and not data.interest_income_account:
