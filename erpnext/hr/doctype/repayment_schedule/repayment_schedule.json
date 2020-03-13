@@ -21,6 +21,7 @@
    "label": "Payment Date"
   },
   {
+   "allow_on_submit": 1,
    "columns": 2,
    "fieldname": "principal_amount",
    "fieldtype": "Currency",
@@ -31,6 +32,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "columns": 2,
    "fieldname": "interest_amount",
    "fieldtype": "Currency",
@@ -41,6 +43,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "columns": 2,
    "fieldname": "total_payment",
    "fieldtype": "Currency",
@@ -50,6 +53,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "columns": 2,
    "fieldname": "balance_loan_amount",
    "fieldtype": "Currency",
@@ -60,6 +64,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "paid",
    "fieldtype": "Check",
@@ -69,7 +74,7 @@
   }
  ],
  "istable": 1,
- "modified": "2019-10-29 11:45:10.694557",
+ "modified": "2020-03-13 17:35:35.410358",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Repayment Schedule",

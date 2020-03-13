@@ -1,5 +1,4 @@
 {
- "actions": [],
  "allow_import": 1,
  "autoname": "ACC-LOAN-.YYYY.-.#####",
  "creation": "2016-12-02 10:11:49.673604",
@@ -161,6 +160,7 @@
    "reqd": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "repayment_periods",
    "fieldtype": "Int",
    "label": "Repayment Period in Months"
@@ -215,6 +215,7 @@
    "label": "Repayment Schedule"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "repayment_schedule",
    "fieldtype": "Table",
    "label": "Repayment Schedule",
@@ -227,6 +228,7 @@
    "label": "Totals"
   },
   {
+   "allow_on_submit": 1,
    "default": "0",
    "fieldname": "total_payment",
    "fieldtype": "Currency",
@@ -265,8 +267,7 @@
   }
  ],
  "is_submittable": 1,
- "links": [],
- "modified": "2019-12-25 17:59:58.122823",
+ "modified": "2020-03-13 17:34:49.375597",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Loan",

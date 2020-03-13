@@ -1,5 +1,4 @@
 {
- "actions": [],
  "allow_import": 1,
  "allow_rename": 1,
  "autoname": "Prompt",
@@ -144,6 +143,7 @@
    "width": "50%"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "earnings",
    "fieldtype": "Table",
    "label": "Earnings",
@@ -160,6 +160,7 @@
    "width": "50%"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "deductions",
    "fieldtype": "Table",
    "label": "Deductions",
@@ -178,6 +179,7 @@
    "width": "50%"
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "total_earning",
    "fieldtype": "Currency",
    "hidden": 1,
@@ -188,6 +190,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "total_deduction",
    "fieldtype": "Currency",
    "hidden": 1,
@@ -198,6 +201,7 @@
    "read_only": 1
   },
   {
+   "allow_on_submit": 1,
    "fieldname": "net_pay",
    "fieldtype": "Currency",
    "hidden": 1,
@@ -239,8 +243,7 @@
  "icon": "fa fa-file-text",
  "idx": 1,
  "is_submittable": 1,
- "links": [],
- "modified": "2019-12-31 17:05:14.118507",
+ "modified": "2020-03-13 17:33:26.093118",
  "modified_by": "Administrator",
  "module": "HR",
  "name": "Salary Structure",
