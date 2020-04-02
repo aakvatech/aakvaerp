@@ -341,7 +341,7 @@ class PayrollEntry(Document):
 		precision = frappe.get_precision("Journal Entry Account", "debit_in_account_currency")
 
 		journal_entry = frappe.new_doc('Journal Entry')
-		journal_entry.voucher_type = 'Bank Entry'
+		journal_entry.voucher_type = 'Journal Entry'
 		journal_entry.user_remark = _('Payment of {0} from {1} to {2}')\
 			.format(user_remark, self.start_date, self.end_date)
 		journal_entry.company = self.company
