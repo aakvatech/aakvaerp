@@ -37,22 +37,12 @@ status_map = {
 	"Sales Order": [
 		["Draft", None],
 		["To Deliver and Bill", "eval:self.per_delivered < 100 and self.per_billed < 100 and self.docstatus == 1"],
-		["To Bill", "eval:self.per_delivered == 100 and self.per_billed < 100 and self.docstatus == 1"],
-		["To Deliver", "eval:self.per_delivered < 100 and self.per_billed == 100 and self.docstatus == 1"],
-		["Completed", "eval:self.per_delivered == 100 and self.per_billed == 100 and self.docstatus == 1"],
+		["To Bill", "eval:(self.per_delivered == 100 or self.skip_delivery_note) and self.per_billed < 100 and self.docstatus == 1"],
+		["To Deliver", "eval:self.per_delivered < 100 and self.per_billed == 100 and self.docstatus == 1 and not self.skip_delivery_note"],
+		["Completed", "eval:(self.per_delivered == 100 or self.skip_delivery_note) and self.per_billed == 100 and self.docstatus == 1"],
 		["Cancelled", "eval:self.docstatus==2"],
 		["Closed", "eval:self.status=='Closed'"],
 		["On Hold", "eval:self.status=='On Hold'"],
-	],
-	"Purchase Invoice": [
-		["Draft", None],
-		["Submitted", "eval:self.docstatus==1"],
-		["Paid", "eval:self.outstanding_amount==0 and self.docstatus==1"],
-		["Return", "eval:self.is_return==1 and self.docstatus==1"],
-		["Debit Note Issued", "eval:self.outstanding_amount < 0 and self.docstatus==1"],
-		["Unpaid", "eval:self.outstanding_amount > 0 and getdate(self.due_date) >= getdate(nowdate()) and self.docstatus==1"],
-		["Overdue", "eval:self.outstanding_amount > 0 and getdate(self.due_date) < getdate(nowdate()) and self.docstatus==1"],
-		["Cancelled", "eval:self.docstatus==2"],
 	],
 	"Purchase Order": [
 		["Draft", None],
@@ -78,6 +68,17 @@ status_map = {
 		["Completed", "eval:self.per_billed == 100 and self.docstatus == 1"],
 		["Cancelled", "eval:self.docstatus==2"],
 		["Closed", "eval:self.status=='Closed'"],
+	],
+	"Purchase Invoice": [
+		["Draft", None],
+		["Submitted", "eval:self.docstatus==1"],
+		["Paid", "eval:self.outstanding_amount==0 and self.docstatus==1"],
+		["Return", "eval:self.is_return==1 and self.docstatus==1"],
+		["Debit Note Issued",
+			"eval:self.outstanding_amount <= 0 and self.docstatus==1 and self.is_return==0 and get_value('Purchase Invoice', {'is_return': 1, 'return_against': self.name, 'docstatus': 1})"],
+		["Unpaid", "eval:self.outstanding_amount > 0 and getdate(self.due_date) >= getdate(nowdate()) and self.docstatus==1"],
+		["Overdue", "eval:self.outstanding_amount > 0 and getdate(self.due_date) < getdate(nowdate()) and self.docstatus==1"],
+		["Cancelled", "eval:self.docstatus==2"],
 	],
 	"Material Request": [
 		["Draft", None],
@@ -118,7 +119,6 @@ class StatusUpdater(Document):
 
 		if self.doctype in status_map:
 			_status = self.status
-
 			if status and update:
 				self.db_set("status", status)
 
@@ -182,7 +182,7 @@ class StatusUpdater(Document):
 						if args.get('no_allowance'):
 							item['reduce_by'] = item[args['target_field']] - item[args['target_ref_field']]
 							if item['reduce_by'] > .01:
-								self.limits_crossed_error(args, item)
+								self.limits_crossed_error(args, item, "qty")
 
 						elif item[args['target_ref_field']]:
 							self.check_overflow_with_allowance(item, args)

@@ -5,6 +5,11 @@ frappe.provide("erpnext.bom");
 
 frappe.ui.form.on("BOM", {
 	setup: function(frm) {
+		frm.custom_make_buttons = {
+			'Work Order': 'Work Order',
+			'Quality Inspection': 'Quality Inspection'
+		};
+
 		frm.set_query("bom_no", "items", function() {
 			return {
 				filters: {
@@ -24,7 +29,10 @@ frappe.ui.form.on("BOM", {
 
 		frm.set_query("item", function() {
 			return {
-				query: "erpnext.controllers.queries.item_query"
+				query: "erpnext.controllers.queries.item_query",
+				filters: {
+					"doctype": "BOM"
+				}
 			};
 		});
 
@@ -38,8 +46,7 @@ frappe.ui.form.on("BOM", {
 
 		frm.set_query("item_code", "items", function() {
 			return {
-				query: "erpnext.controllers.queries.item_query",
-				filters: [["Item", "name", "!=", cur_frm.doc.item]]
+				query: "erpnext.controllers.queries.item_query"
 			};
 		});
 
@@ -85,9 +92,17 @@ frappe.ui.form.on("BOM", {
 		}
 
 		if(frm.doc.docstatus!=0) {
-			frm.add_custom_button(__("Duplicate"), function() {
-				frm.copy_doc();
-			});
+			frm.add_custom_button(__("Work Order"), function() {
+				frm.trigger("make_work_order");
+			}, __("Create"));
+
+			if (frm.doc.inspection_required) {
+				frm.add_custom_button(__("Quality Inspection"), function() {
+					frm.trigger("make_quality_inspection");
+				}, __("Create"));
+			}
+
+			frm.page.set_inner_btn_group_as_primary(__('Create'));
 		}
 
 		if(frm.doc.items && frm.doc.allow_alternative_item) {
@@ -107,6 +122,77 @@ frappe.ui.form.on("BOM", {
 				});
 			}
 		}
+
+
+		if (frm.doc.__onload && frm.doc.__onload["has_variants"]) {
+			frm.set_intro(__('This is a Template BOM and will be used to make the work order for {0} of the item {1}',
+				[
+					`<a class="variants-intro">variants</a>`,
+					`<a href="#Form/Item/${frm.doc.item}">${frm.doc.item}</a>`,
+				]), true);
+
+			frm.$wrapper.find(".variants-intro").on("click", () => {
+				frappe.set_route("List", "Item", {"variant_of": frm.doc.item});
+			});
+		}
+	},
+
+	make_work_order: function(frm) {
+		const fields = [];
+
+		if (frm.doc.__onload && frm.doc.__onload["has_variants"]) {
+			fields.push({
+				fieldtype: 'Link',
+				label: __('Variant Item'),
+				fieldname: 'item',
+				options: "Item",
+				reqd: 1,
+				get_query: function() {
+					return {
+						query: "erpnext.controllers.queries.item_query",
+						filters: {
+							"variant_of": frm.doc.item
+						}
+					};
+				}
+			});
+		}
+
+		fields.push({
+			fieldtype: 'Float',
+			label: __('Qty To Manufacture'),
+			fieldname: 'qty',
+			reqd: 1,
+			default: 1
+		});
+
+		frappe.prompt(fields, data => {
+			let item = data.item || frm.doc.item;
+
+			frappe.call({
+				method: "erpnext.manufacturing.doctype.work_order.work_order.make_work_order",
+				args: {
+					bom_no: frm.doc.name,
+					item: item,
+					qty: data.qty || 0.0,
+					project: frm.doc.project
+				},
+				freeze: true,
+				callback: function(r) {
+					if(r.message) {
+						var doc = frappe.model.sync(r.message)[0];
+						frappe.set_route("Form", doc.doctype, doc.name);
+					}
+				}
+			});
+		}, __("Enter Value"), __("Create"));
+	},
+
+	make_quality_inspection: function(frm) {
+		frappe.model.open_mapped_doc({
+			method: "erpnext.stock.doctype.quality_inspection.quality_inspection.make_quality_inspection",
+			frm: frm
+		})
 	},
 
 	update_cost: function(frm) {
@@ -117,7 +203,7 @@ frappe.ui.form.on("BOM", {
 			args: {
 				update_parent: true,
 				from_child_bom:false,
-				save: false
+				save: frm.doc.docstatus === 1 ? true : false
 			},
 			callback: function(r) {
 				refresh_field("items");

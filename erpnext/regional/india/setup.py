@@ -13,7 +13,6 @@ from frappe.utils import today
 def setup(company=None, patch=True):
 	setup_company_independent_fixtures()
 	if not patch:
-		update_address_template()
 		make_fixtures(company)
 
 # TODO: for all countries
@@ -23,21 +22,6 @@ def setup_company_independent_fixtures():
 	add_custom_roles_for_reports()
 	frappe.enqueue('erpnext.regional.india.setup.add_hsn_sac_codes', now=frappe.flags.in_test)
 	add_print_formats()
-
-def update_address_template():
-	with open(os.path.join(os.path.dirname(__file__), 'address_template.html'), 'r') as f:
-		html = f.read()
-
-	address_template = frappe.db.get_value('Address Template', 'India')
-	if address_template:
-		frappe.db.set_value('Address Template', 'India', 'template', html)
-	else:
-		# make new html template for India
-		frappe.get_doc(dict(
-			doctype='Address Template',
-			country='India',
-			template=html
-		)).insert()
 
 def add_hsn_sac_codes():
 	# HSN codes
@@ -77,11 +61,18 @@ def add_custom_roles_for_reports():
 			)).insert()
 
 def add_permissions():
-	for doctype in ('GST HSN Code', 'GST Settings'):
+	for doctype in ('GST HSN Code', 'GST Settings', 'GSTR 3B Report'):
 		add_permission(doctype, 'All', 0)
-		add_permission(doctype, 'Accounts Manager', 0)
-		update_permission_property(doctype, 'Accounts Manager', 0, 'write', 1)
-		update_permission_property(doctype, 'Accounts Manager', 0, 'create', 1)
+		for role in ('Accounts Manager', 'Accounts User', 'System Manager'):
+			add_permission(doctype, role, 0)
+			update_permission_property(doctype, role, 0, 'write', 1)
+			update_permission_property(doctype, role, 0, 'create', 1)
+
+		if doctype == 'GST HSN Code':
+			for role in ('Item Manager', 'Stock Manager'):
+				add_permission(doctype, role, 0)
+				update_permission_property(doctype, role, 0, 'write', 1)
+				update_permission_property(doctype, role, 0, 'create', 1)
 
 def add_print_formats():
 	frappe.reload_doc("regional", "print_format", "gst_tax_invoice")
@@ -107,7 +98,12 @@ def make_custom_fields(update=True):
 		dict(fieldname='gst_category', label='GST Category',
 			fieldtype='Select', insert_after='gst_section', print_hide=1,
 			options='\nRegistered Regular\nRegistered Composition\nUnregistered\nSEZ\nOverseas\nUIN Holders',
-			fetch_from='supplier.gst_category', fetch_if_empty=1)
+			fetch_from='supplier.gst_category', fetch_if_empty=1),
+		dict(fieldname='export_type', label='Export Type',
+			fieldtype='Select', insert_after='gst_category', print_hide=1,
+			depends_on='eval:in_list(["SEZ", "Overseas"], doc.gst_category)',
+			options='\nWith Payment of Tax\nWithout Payment of Tax', fetch_from='supplier.export_type',
+			fetch_if_empty=1),
 	]
 
 	sales_invoice_gst_category = [
@@ -116,20 +112,21 @@ def make_custom_fields(update=True):
 		dict(fieldname='gst_category', label='GST Category',
 			fieldtype='Select', insert_after='gst_section', print_hide=1,
 			options='\nRegistered Regular\nRegistered Composition\nUnregistered\nSEZ\nOverseas\nConsumer\nDeemed Export\nUIN Holders',
-			fetch_from='customer.gst_category', fetch_if_empty=1)
+			fetch_from='customer.gst_category', fetch_if_empty=1),
+		dict(fieldname='export_type', label='Export Type',
+			fieldtype='Select', insert_after='gst_category', print_hide=1,
+			depends_on='eval:in_list(["SEZ", "Overseas", "Deemed Export"], doc.gst_category)',
+			options='\nWith Payment of Tax\nWithout Payment of Tax', fetch_from='customer.export_type',
+			fetch_if_empty=1),
 	]
 
 	invoice_gst_fields = [
 		dict(fieldname='invoice_copy', label='Invoice Copy',
-			fieldtype='Select', insert_after='gst_category', print_hide=1, allow_on_submit=1,
+			fieldtype='Select', insert_after='export_type', print_hide=1, allow_on_submit=1,
 			options='Original for Recipient\nDuplicate for Transporter\nDuplicate for Supplier\nTriplicate for Supplier'),
 		dict(fieldname='reverse_charge', label='Reverse Charge',
 			fieldtype='Select', insert_after='invoice_copy', print_hide=1,
 			options='Y\nN', default='N'),
-		dict(fieldname='export_type', label='Export Type',
-			fieldtype='Select', insert_after='reverse_charge', print_hide=1,
-			depends_on='eval:in_list(["SEZ", "Overseas", "Deemed Export"], doc.gst_category)',
-			options='\nWith Payment of Tax\nWithout Payment of Tax'),
 		dict(fieldname='ecommerce_gstin', label='E-commerce GSTIN',
 			fieldtype='Data', insert_after='export_type', print_hide=1),
 		dict(fieldname='gst_col_break', fieldtype='Column Break', insert_after='ecommerce_gstin'),
@@ -142,13 +139,13 @@ def make_custom_fields(update=True):
 	purchase_invoice_gst_fields = [
 			dict(fieldname='supplier_gstin', label='Supplier GSTIN',
 				fieldtype='Data', insert_after='supplier_address',
-				fetch_from='supplier_address.gstin', print_hide=1),
+				fetch_from='supplier_address.gstin', print_hide=1, read_only=1),
 			dict(fieldname='company_gstin', label='Company GSTIN',
 				fieldtype='Data', insert_after='shipping_address_display',
-				fetch_from='shipping_address.gstin', print_hide=1),
+				fetch_from='shipping_address.gstin', print_hide=1, read_only=1),
 			dict(fieldname='place_of_supply', label='Place of Supply',
 				fieldtype='Data', insert_after='shipping_address',
-				print_hide=1, read_only=0),
+				print_hide=1, read_only=1),
 		]
 
 	purchase_invoice_itc_fields = [
@@ -167,17 +164,17 @@ def make_custom_fields(update=True):
 
 	sales_invoice_gst_fields = [
 			dict(fieldname='billing_address_gstin', label='Billing Address GSTIN',
-				fieldtype='Data', insert_after='customer_address',
+				fieldtype='Data', insert_after='customer_address', read_only=1,
 				fetch_from='customer_address.gstin', print_hide=1),
 			dict(fieldname='customer_gstin', label='Customer GSTIN',
 				fieldtype='Data', insert_after='shipping_address_name',
 				fetch_from='shipping_address_name.gstin', print_hide=1),
 			dict(fieldname='place_of_supply', label='Place of Supply',
 				fieldtype='Data', insert_after='customer_gstin',
-				print_hide=1, read_only=0),
+				print_hide=1, read_only=1),
 			dict(fieldname='company_gstin', label='Company GSTIN',
 				fieldtype='Data', insert_after='company_address',
-				fetch_from='company_address.gstin', print_hide=1),
+				fetch_from='company_address.gstin', print_hide=1, read_only=1),
 		]
 
 	sales_invoice_shipping_fields = [
@@ -194,7 +191,11 @@ def make_custom_fields(update=True):
 
 	inter_state_gst_field = [
 		dict(fieldname='is_inter_state', label='Is Inter State',
-			fieldtype='Check', insert_after='disabled', print_hide=1)
+			fieldtype='Check', insert_after='disabled', print_hide=1),
+		dict(fieldname='tax_category_column_break', fieldtype='Column Break',
+			insert_after='is_inter_state'),
+		dict(fieldname='gst_state', label='Source State', fieldtype='Select',
+			options='\n'.join(states), insert_after='company')
 	]
 
 	ewaybill_fields = [
@@ -234,7 +235,16 @@ def make_custom_fields(update=True):
 			'insert_after': 'lr_date',
 			'print_hide': 1,
 			'translatable': 0
-		}
+		},
+		{
+			'fieldname': 'ewaybill',
+			'label': 'E-Way Bill No.',
+			'fieldtype': 'Data',
+			'depends_on': 'eval:(doc.docstatus === 1)',
+			'allow_on_submit': 1,
+			'insert_after': 'customer_name_in_arabic',
+			'translatable': 0,
+    	}
 	]
 
 	si_ewaybill_fields = [
@@ -350,7 +360,7 @@ def make_custom_fields(update=True):
 		},
 		{
 			'fieldname': 'ewaybill',
-			'label': 'e-Way Bill No.',
+			'label': 'E-Way Bill No.',
 			'fieldtype': 'Data',
 			'depends_on': 'eval:(doc.docstatus === 1)',
 			'allow_on_submit': 1,
@@ -374,8 +384,7 @@ def make_custom_fields(update=True):
 		'Sales Invoice': sales_invoice_gst_category + invoice_gst_fields + sales_invoice_shipping_fields + sales_invoice_gst_fields + si_ewaybill_fields,
 		'Delivery Note': sales_invoice_gst_fields + ewaybill_fields + sales_invoice_shipping_fields,
 		'Sales Order': sales_invoice_gst_fields,
-		'Sales Taxes and Charges Template': inter_state_gst_field,
-		'Purchase Taxes and Charges Template': inter_state_gst_field,
+		'Tax Category': inter_state_gst_field,
 		'Item': [
 			dict(fieldname='gst_hsn_code', label='HSN/SAC',
 				fieldtype='Link', options='GST HSN Code', insert_after='item_group'),
@@ -459,6 +468,15 @@ def make_custom_fields(update=True):
 				'insert_after': 'gst_transporter_id',
 				'options': 'Registered Regular\nRegistered Composition\nUnregistered\nSEZ\nOverseas\nUIN Holders',
 				'default': 'Unregistered'
+			},
+			{
+				'fieldname': 'export_type',
+				'label': 'Export Type',
+				'fieldtype': 'Select',
+				'insert_after': 'gst_category',
+				'default': 'Without Payment of Tax',
+				'depends_on':'eval:in_list(["SEZ", "Overseas"], doc.gst_category)',
+				'options': '\nWith Payment of Tax\nWithout Payment of Tax'
 			}
 		],
 		'Customer': [
@@ -469,6 +487,15 @@ def make_custom_fields(update=True):
 				'insert_after': 'customer_type',
 				'options': 'Registered Regular\nRegistered Composition\nUnregistered\nSEZ\nOverseas\nConsumer\nDeemed Export\nUIN Holders',
 				'default': 'Unregistered'
+			},
+			{
+				'fieldname': 'export_type',
+				'label': 'Export Type',
+				'fieldtype': 'Select',
+				'insert_after': 'gst_category',
+				'default': 'Without Payment of Tax',
+				'depends_on':'eval:in_list(["SEZ", "Overseas", "Deemed Export"], doc.gst_category)',
+				'options': '\nWith Payment of Tax\nWithout Payment of Tax'
 			}
 		]
 	}

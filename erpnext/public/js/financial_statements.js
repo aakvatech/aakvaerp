@@ -4,7 +4,7 @@ erpnext.financial_statements = {
 	"filters": get_filters(),
 	"formatter": function(value, row, column, data, default_formatter) {
 		if (column.fieldname=="account") {
-			value = data.account_name;
+			value = data.account_name || value;
 
 			column.link_onclick =
 				"erpnext.financial_statements.open_general_ledger(" + JSON.stringify(data) + ")";
@@ -77,6 +77,39 @@ function get_filters(){
 			"label": __("Finance Book"),
 			"fieldtype": "Link",
 			"options": "Finance Book"
+		},
+		{
+			"fieldname":"filter_based_on",
+			"label": __("Filter Based On"),
+			"fieldtype": "Select",
+			"options": ["Fiscal Year", "Date Range"],
+			"default": ["Fiscal Year"],
+			"reqd": 1,
+			on_change: function() {
+				let filter_based_on = frappe.query_report.get_filter_value('filter_based_on');
+				frappe.query_report.toggle_filter_display('from_fiscal_year', filter_based_on === 'Date Range');
+				frappe.query_report.toggle_filter_display('to_fiscal_year', filter_based_on === 'Date Range');
+				frappe.query_report.toggle_filter_display('period_start_date', filter_based_on === 'Fiscal Year');
+				frappe.query_report.toggle_filter_display('period_end_date', filter_based_on === 'Fiscal Year');
+
+				frappe.query_report.refresh();
+			}
+		},
+		{
+			"fieldname":"period_start_date",
+			"label": __("Start Date"),
+			"fieldtype": "Date",
+			"default": frappe.datetime.nowdate(),
+			"hidden": 1,
+			"reqd": 1
+		},
+		{
+			"fieldname":"period_end_date",
+			"label": __("End Date"),
+			"fieldtype": "Date",
+			"default": frappe.datetime.add_months(frappe.datetime.nowdate(), 12),
+			"hidden": 1,
+			"reqd": 1
 		},
 		{
 			"fieldname":"from_fiscal_year",

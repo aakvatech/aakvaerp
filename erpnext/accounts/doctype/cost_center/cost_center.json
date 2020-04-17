@@ -1,8 +1,8 @@
 {
+ "actions": [],
  "allow_copy": 1,
  "allow_import": 1,
  "allow_rename": 1,
- "autoname": "field:cost_center_name",
  "creation": "2013-01-23 19:57:17",
  "description": "Track separate Income and Expense for product verticals or divisions.",
  "doctype": "DocType",
@@ -16,7 +16,7 @@
   "company",
   "cb0",
   "is_group",
-  "enabled",
+  "disabled",
   "lft",
   "rgt",
   "old_parent"
@@ -117,17 +117,20 @@
   },
   {
    "default": "0",
-   "fieldname": "enabled",
+   "fieldname": "disabled",
    "fieldtype": "Check",
-   "label": "Enabled"
+   "label": "Disabled"
   }
  ],
  "icon": "fa fa-money",
  "idx": 1,
- "modified": "2019-08-22 15:05:05.559862",
- "modified_by": "sammish.thundiyil@gmail.com",
+ "is_tree": 1,
+ "links": [],
+ "modified": "2020-03-18 17:59:04.321637",
+ "modified_by": "Administrator",
  "module": "Accounts",
  "name": "Cost Center",
+ "nsm_parent_field": "parent_cost_center",
  "owner": "Administrator",
  "permissions": [
   {
@@ -163,7 +166,6 @@
    "role": "Purchase User"
   }
  ],
- "quick_entry": 1,
  "search_fields": "parent_cost_center, is_group",
  "show_name_in_global_search": 1,
  "sort_field": "modified",

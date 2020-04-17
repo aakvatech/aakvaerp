@@ -30,7 +30,7 @@ def validate_service_stop_date(doc):
 				frappe.throw(_("Service Stop Date cannot be after Service End Date"))
 
 		if old_stop_dates and old_stop_dates.get(item.name) and item.service_stop_date!=old_stop_dates.get(item.name):
-			frappe.throw(_("Cannot change Service Stop Date for item in row {0}".format(item.idx)))
+			frappe.throw(_("Cannot change Service Stop Date for item in row {0}").format(item.idx))
 
 def convert_deferred_expense_to_expense(start_date=None, end_date=None):
 	# book the expense/income on the last day, but it will be trigger on the 1st of month at 12:00 AM
@@ -173,6 +173,8 @@ def make_gl_entries(doc, credit_account, debit_account, against,
 	amount, base_amount, posting_date, project, account_currency, cost_center, voucher_detail_no):
 	# GL Entry for crediting the amount in the deferred expense
 	from erpnext.accounts.general_ledger import make_gl_entries
+
+	if amount == 0: return
 
 	gl_entries = []
 	gl_entries.append(

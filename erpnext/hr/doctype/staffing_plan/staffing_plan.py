@@ -7,6 +7,7 @@ import frappe
 from frappe.model.document import Document
 from frappe import _
 from frappe.utils import getdate, nowdate, cint, flt
+from frappe.utils.nestedset import get_descendants_of
 
 class SubsidiaryCompanyError(frappe.ValidationError): pass
 class ParentCompanyError(frappe.ValidationError): pass
@@ -56,8 +57,8 @@ class StaffingPlan(Document):
 			and sp.to_date >= %s and sp.from_date <= %s and sp.company = %s
 		""", (staffing_plan_detail.designation, self.from_date, self.to_date, self.company))
 		if overlap and overlap [0][0]:
-			frappe.throw(_("Staffing Plan {0} already exist for designation {1}"
-				.format(overlap[0][0], staffing_plan_detail.designation)))
+			frappe.throw(_("Staffing Plan {0} already exist for designation {1}")
+				.format(overlap[0][0], staffing_plan_detail.designation))
 
 	def validate_with_parent_plan(self, staffing_plan_detail):
 		if not frappe.get_cached_value('Company',  self.company,  "parent_company"):
@@ -131,7 +132,8 @@ def get_designation_counts(designation, company):
 		return False
 
 	employee_counts = {}
-	company_set = get_company_set(company)
+	company_set = get_descendants_of('Company', company)
+	company_set.append(company)
 
 	employee_counts["employee_count"] = frappe.db.get_value("Employee",
 		filters={
@@ -168,13 +170,3 @@ def get_active_staffing_plan_details(company, designation, from_date=getdate(now
 
 	# Only a single staffing plan can be active for a designation on given date
 	return staffing_plan if staffing_plan else None
-
-def get_company_set(company):
-	return frappe.db.sql_list("""
-		SELECT
-			name
-		FROM `tabCompany`
-		WHERE
-			parent_company=%(company)s
-			OR name=%(company)s
-	""", (dict(company=company)))

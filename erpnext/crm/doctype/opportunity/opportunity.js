@@ -59,6 +59,7 @@ frappe.ui.form.on("Opportunity", {
 	contact_person: erpnext.utils.get_contact_details,
 
 	opportunity_from: function(frm) {
+		frm.trigger('setup_queries');
 		frm.toggle_reqd("party_name", frm.doc.opportunity_from);
 		frm.trigger("set_dynamic_field_label");
 	},
@@ -167,7 +168,7 @@ erpnext.crm.Opportunity = frappe.ui.form.Controller.extend({
 		if (me.frm.doc.opportunity_from == "Lead") {
 			me.frm.set_query('party_name', erpnext.queries['lead']);
 		}
-		else if (me.frm.doc.opportunity_from == "Cuatomer") {
+		else if (me.frm.doc.opportunity_from == "Customer") {
 			me.frm.set_query('party_name', erpnext.queries['customer']);
 		}
 	},

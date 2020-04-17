@@ -7,7 +7,7 @@ from frappe import _
 from frappe.utils import flt, getdate, formatdate, cstr
 from erpnext.accounts.report.financial_statements \
 	import filter_accounts, set_gl_entries_by_account, filter_out_zero_value_rows
-from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions
+from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import get_accounting_dimensions, get_dimension_with_children
 
 value_fields = ("opening_debit", "opening_credit", "debit", "credit", "closing_debit", "closing_credit")
 
@@ -76,8 +76,7 @@ def get_data(filters):
 	accumulate_values_into_parents(accounts, accounts_by_name)
 
 	data = prepare_data(accounts, filters, total_row, parent_children_map, company_currency)
-	data = filter_out_zero_value_rows(data, parent_children_map,
-		show_zero_values=filters.get("show_zero_values"))
+	data = filter_out_zero_value_rows(data, parent_children_map, show_zero_values=filters.get("show_zero_values"))
 
 	return data
 
@@ -104,13 +103,13 @@ def get_rootwise_opening_balances(filters, report_type):
 			where lft >= %s and rgt <= %s)""" % (lft, rgt)
 
 	if filters.finance_book:
-		fb_conditions = " and finance_book = %(finance_book)s"
+		fb_conditions = " AND finance_book = %(finance_book)s"
 		if filters.include_default_book_entries:
-			fb_conditions = " and (finance_book in (%(finance_book)s, %(company_fb)s))"
+			fb_conditions = " AND (finance_book in (%(finance_book)s, %(company_fb)s, '') OR finance_book IS NULL)"
 
 		additional_conditions += fb_conditions
 
-	accounting_dimensions = get_accounting_dimensions()
+	accounting_dimensions = get_accounting_dimensions(as_list=False)
 
 	query_filters = {
 		"company": filters.company,
@@ -123,11 +122,16 @@ def get_rootwise_opening_balances(filters, report_type):
 
 	if accounting_dimensions:
 		for dimension in accounting_dimensions:
-			if filters.get(dimension):
-				additional_conditions += """ and {0} in (%({0})s) """.format(dimension)
+			if filters.get(dimension.fieldname):
+				if frappe.get_cached_value('DocType', dimension.document_type, 'is_tree'):
+					filters[dimension.fieldname] = get_dimension_with_children(dimension.document_type,
+						filters.get(dimension.fieldname))
+					additional_conditions += "and {0} in %({0})s".format(dimension.fieldname)
+				else:
+					additional_conditions += "and {0} in (%({0})s)".format(dimension.fieldname)
 
 				query_filters.update({
-					dimension: filters.get(dimension)
+					dimension.fieldname: filters.get(dimension.fieldname)
 				})
 
 	gle = frappe.db.sql("""
@@ -187,33 +191,11 @@ def calculate_values(accounts, gl_entries_by_account, opening_balances, filters,
 
 		d["closing_debit"] = d["opening_debit"] + d["debit"]
 		d["closing_credit"] = d["opening_credit"] + d["credit"]
-		total_row["debit"] += d["debit"]
-		total_row["credit"] += d["credit"]
 
-		if d["root_type"] == "Asset" or d["root_type"] == "Equity" or d["root_type"] == "Expense":
-			d["opening_debit"] -= d["opening_credit"]
-			d["closing_debit"] -= d["closing_credit"]
+		prepare_opening_closing(d)
 
-			# For opening
-			check_opening_closing_has_negative_value(d, "opening_debit", "opening_credit")
-
-			# For closing
-			check_opening_closing_has_negative_value(d, "closing_debit", "closing_credit")
-
-		if d["root_type"] == "Liability" or d["root_type"] == "Income":
-			d["opening_credit"] -= d["opening_debit"]
-			d["closing_credit"] -= d["closing_debit"]
-
-			# For opening
-			check_opening_closing_has_negative_value(d, "opening_credit", "opening_debit")
-
-			# For closing
-			check_opening_closing_has_negative_value(d, "closing_credit", "closing_debit")
-
-		total_row["opening_debit"] += d["opening_debit"]
-		total_row["closing_debit"] += d["closing_debit"]
-		total_row["opening_credit"] += d["opening_credit"]
-		total_row["closing_credit"] += d["closing_credit"]
+		for field in value_fields:
+			total_row[field] += d[field]
 
 	return total_row
 
@@ -227,6 +209,10 @@ def prepare_data(accounts, filters, total_row, parent_children_map, company_curr
 	data = []
 
 	for d in accounts:
+		# Prepare opening closing for group account
+		if parent_children_map.get(d.account):
+			prepare_opening_closing(d)
+
 		has_value = False
 		row = {
 			"account": d.name,
@@ -313,11 +299,16 @@ def get_columns():
 		}
 	]
 
-def check_opening_closing_has_negative_value(d, dr_or_cr, switch_to_column):
-	# If opening debit has negetive value then move it to opening credit and vice versa.
+def prepare_opening_closing(row):
+	dr_or_cr = "debit" if row["root_type"] in ["Asset", "Equity", "Expense"] else "credit"
+	reverse_dr_or_cr = "credit" if dr_or_cr == "debit" else "debit"
 
-	if d[dr_or_cr] < 0:
-		d[switch_to_column] = abs(d[dr_or_cr])
-		d[dr_or_cr] = 0.0
-	else:
-		d[switch_to_column] = 0.0
+	for col_type in ["opening", "closing"]:
+		valid_col = col_type + "_" + dr_or_cr
+		reverse_col = col_type + "_" + reverse_dr_or_cr
+		row[valid_col] -= row[reverse_col]
+		if row[valid_col] < 0:
+			row[reverse_col] = abs(row[valid_col])
+			row[valid_col] = 0.0
+		else:
+			row[reverse_col] = 0.0

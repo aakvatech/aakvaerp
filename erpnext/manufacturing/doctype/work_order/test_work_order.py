@@ -5,23 +5,24 @@
 from __future__ import unicode_literals
 import unittest
 import frappe
-from frappe.utils import flt, time_diff_in_hours, now, add_days, cint
+from frappe.utils import flt, time_diff_in_hours, now, add_months, cint, today
 from erpnext.stock.doctype.purchase_receipt.test_purchase_receipt import set_perpetual_inventory
-from erpnext.manufacturing.doctype.work_order.work_order \
-	import make_stock_entry, ItemHasVariantError, stop_unstop, StockOverProductionError, OverProductionError
+from erpnext.manufacturing.doctype.work_order.work_order import (make_stock_entry, 
+	ItemHasVariantError, stop_unstop, StockOverProductionError, OverProductionError, CapacityError)
 from erpnext.stock.doctype.stock_entry import test_stock_entry
 from erpnext.stock.utils import get_bin
 from erpnext.selling.doctype.sales_order.test_sales_order import make_sales_order
 from erpnext.stock.doctype.item.test_item import make_item
 from erpnext.manufacturing.doctype.production_plan.test_production_plan import make_bom
+from erpnext.stock.doctype.warehouse.test_warehouse import create_warehouse
 
 class TestWorkOrder(unittest.TestCase):
 	def setUp(self):
+		set_perpetual_inventory(0)
 		self.warehouse = '_Test Warehouse 2 - _TC'
 		self.item = '_Test Item'
 
 	def check_planned_qty(self):
-		set_perpetual_inventory(0)
 
 		planned0 = frappe.db.get_value("Bin", {"item_code": "_Test FG Item",
 			"warehouse": "_Test Warehouse 1 - _TC"}, "planned_qty") or 0
@@ -81,6 +82,37 @@ class TestWorkOrder(unittest.TestCase):
 		wo_order.qty = 2
 		wo_order.set_work_order_operations()
 		self.assertEqual(wo_order.planned_operating_cost, cost*2)
+
+	def test_resered_qty_for_partial_completion(self):
+		item = "_Test Item"
+		warehouse = create_warehouse("Test Warehouse for reserved_qty - _TC")
+
+		bin1_at_start = get_bin(item, warehouse)
+
+		# reset to correct value
+		bin1_at_start.update_reserved_qty_for_production()
+
+		wo_order = make_wo_order_test_record(item="_Test FG Item", qty=2,
+			source_warehouse=warehouse, skip_transfer=1)
+
+		bin1_on_submit = get_bin(item, warehouse)
+
+		# reserved qty for production is updated
+		self.assertEqual(cint(bin1_at_start.reserved_qty_for_production) + 2,
+			cint(bin1_on_submit.reserved_qty_for_production))
+
+		test_stock_entry.make_stock_entry(item_code="_Test Item",
+			target=warehouse, qty=100, basic_rate=100)
+		test_stock_entry.make_stock_entry(item_code="_Test Item Home Desktop 100",
+			target=warehouse, qty=100, basic_rate=100)
+
+		s = frappe.get_doc(make_stock_entry(wo_order.name, "Manufacture", 1))
+		s.submit()
+
+		bin1_at_completion = get_bin(item, warehouse)
+
+		self.assertEqual(cint(bin1_at_completion.reserved_qty_for_production),
+			cint(bin1_on_submit.reserved_qty_for_production) - 1)
 
 	def test_production_item(self):
 		wo_order = make_wo_order_test_record(item="_Test FG Item", qty=1, do_not_save=True)
@@ -307,13 +339,49 @@ class TestWorkOrder(unittest.TestCase):
 			{'docstatus': 1, 'with_operations': 1, 'company': '_Test Company'}, ['name', 'item'])
 
 		if data:
+			frappe.db.set_value("Manufacturing Settings",
+				None, "disable_capacity_planning", 0)
+
 			bom, bom_item = data
 
 			bom_doc = frappe.get_doc('BOM', bom)
 			work_order = make_wo_order_test_record(item=bom_item, qty=1, bom_no=bom)
+			self.assertTrue(work_order.planned_end_date)
 
 			job_cards = frappe.get_all('Job Card', filters = {'work_order': work_order.name})
 			self.assertEqual(len(job_cards), len(bom_doc.operations))
+
+	def test_capcity_planning(self):
+		frappe.db.set_value("Manufacturing Settings", None, {
+			"disable_capacity_planning": 0,
+			"capacity_planning_for_days": 1
+		})
+
+		data = frappe.get_cached_value('BOM', {'docstatus': 1, 'item': '_Test FG Item 2',
+			'with_operations': 1, 'company': '_Test Company'}, ['name', 'item'])
+
+		if data:
+			bom, bom_item = data
+
+			planned_start_date = add_months(today(), months=-1)
+			work_order = make_wo_order_test_record(item=bom_item,
+				qty=10, bom_no=bom, planned_start_date=planned_start_date)
+
+			work_order1 = make_wo_order_test_record(item=bom_item,
+				qty=30, bom_no=bom, planned_start_date=planned_start_date, do_not_submit=1)
+
+			self.assertRaises(CapacityError, work_order1.submit)
+
+			frappe.db.set_value("Manufacturing Settings", None, {
+				"capacity_planning_for_days": 30
+			})
+
+			work_order1.reload()
+			work_order1.submit()
+			self.assertTrue(work_order1.docstatus, 1)
+
+			work_order1.cancel()
+			work_order.cancel()
 
 	def test_work_order_with_non_transfer_item(self):
 		items = {'Finished Good Transfer Item': 1, '_Test FG Item': 1, '_Test FG Item 1': 0}
@@ -368,16 +436,14 @@ def make_wo_order_test_record(**args):
 	wo_order.company = args.company or "_Test Company"
 	wo_order.stock_uom = args.stock_uom or "_Test UOM"
 	wo_order.use_multi_level_bom=0
-	wo_order.skip_transfer=1
+	wo_order.skip_transfer=args.skip_transfer or 0
 	wo_order.get_items_and_operations_from_bom()
 	wo_order.sales_order = args.sales_order or None
+	wo_order.planned_start_date = args.planned_start_date or now()
 
 	if args.source_warehouse:
 		for item in wo_order.get("required_items"):
 			item.source_warehouse = args.source_warehouse
-
-	if args.planned_start_date:
-		wo_order.planned_start_date = args.planned_start_date
 
 	if not args.do_not_save:
 		wo_order.insert()

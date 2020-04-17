@@ -11,9 +11,6 @@ from erpnext.utilities.transaction_base import TransactionBase
 from erpnext.accounts.party import get_party_account_currency
 from frappe.email.inbox import link_communication_to_document
 
-subject_field = "title"
-sender_field = "contact_email"
-
 class Opportunity(TransactionBase):
 	def after_insert(self):
 		if self.opportunity_from == "Lead":
@@ -130,10 +127,10 @@ class Opportunity(TransactionBase):
 
 	def has_lost_quotation(self):
 		lost_quotation = frappe.db.sql("""
-			select q.name
-			from `tabQuotation` q, `tabQuotation Item` qi
-			where q.name = qi.parent and q.docstatus=1
-				and qi.prevdoc_docname =%s and q.status = 'Lost'
+			select name
+			from `tabQuotation`
+			where docstatus=1
+				and opportunity =%s and status = 'Lost'
 			""", self.name)
 		if lost_quotation:
 			if self.has_active_quotation():
@@ -307,7 +304,7 @@ def set_multiple_status(names, status):
 
 def auto_close_opportunity():
 	""" auto close the `Replied` Opportunities after 7 days """
-	auto_close_after_days = frappe.db.get_value("Support Settings", "Support Settings", "close_opportunity_after_days") or 15
+	auto_close_after_days = frappe.db.get_single_value("Selling Settings", "close_opportunity_after_days") or 15
 
 	opportunities = frappe.db.sql(""" select name from tabOpportunity where status='Replied' and
 		modified<DATE_SUB(CURDATE(), INTERVAL %s DAY) """, (auto_close_after_days), as_dict=True)
@@ -339,3 +336,27 @@ def make_opportunity_from_communication(communication, ignore_communication_link
 	link_communication_to_document(doc, "Opportunity", opportunity.name, ignore_communication_links)
 
 	return opportunity.name
+@frappe.whitelist()
+def get_events(start, end, filters=None):
+	"""Returns events for Gantt / Calendar view rendering.
+	:param start: Start date-time.
+	:param end: End date-time.
+	:param filters: Filters (JSON).
+	"""
+	from frappe.desk.calendar import get_event_conditions
+	conditions = get_event_conditions("Opportunity", filters)
+
+	data = frappe.db.sql("""
+		select
+			distinct `tabOpportunity`.name, `tabOpportunity`.customer_name, `tabOpportunity`.opportunity_amount,
+			`tabOpportunity`.title, `tabOpportunity`.contact_date
+		from
+			`tabOpportunity`
+		where
+			(`tabOpportunity`.contact_date between %(start)s and %(end)s)
+			{conditions}
+		""".format(conditions=conditions), {
+			"start": start,
+			"end": end
+		}, as_dict=True, update={"allDay": 0})
+	return data

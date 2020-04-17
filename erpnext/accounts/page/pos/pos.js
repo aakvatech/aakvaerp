@@ -817,6 +817,7 @@ erpnext.pos.PointOfSale = erpnext.taxes_and_totals.extend({
 				if(reg.test(data.name.toLowerCase())
 					|| reg.test(data.customer_name.toLowerCase())
 					|| (contact && reg.test(contact["phone"]))
+					|| (contact && reg.test(contact["mobile_no"]))
 					|| (data.customer_group && reg.test(data.customer_group.toLowerCase()))){
 						return data;
 				}
@@ -833,6 +834,7 @@ erpnext.pos.PointOfSale = erpnext.taxes_and_totals.extend({
 				if(contact && !c['phone']) {
 					c["phone"] = contact["phone"];
 					c["email_id"] = contact["email_id"];
+					c["mobile_no"] = contact["mobile_no"];
 				}
 
 				me.customers_mapper.push({
@@ -842,9 +844,10 @@ erpnext.pos.PointOfSale = erpnext.taxes_and_totals.extend({
 					customer_group: c.customer_group,
 					territory: c.territory,
 					phone: contact ? contact["phone"] : '',
+					mobile_no: contact ? contact["mobile_no"] : '',
 					email_id: contact ? contact["email_id"] : '',
 					searchtext: ['customer_name', 'customer_group', 'name', 'value',
-						'label', 'email_id', 'phone']
+						'label', 'email_id', 'phone', 'mobile_no']
 						.map(key => c[key]).join(' ')
 						.toLowerCase()
 				});
@@ -1766,6 +1769,7 @@ erpnext.pos.PointOfSale = erpnext.taxes_and_totals.extend({
 				method: "erpnext.accounts.doctype.sales_invoice.pos.make_invoice",
 				freeze: true,
 				args: {
+					pos_profile: me.pos_profile_data,
 					doc_list: me.si_docs,
 					email_queue_list: me.email_queue_list,
 					customers_list: me.customers_list
