@@ -21,8 +21,6 @@ class ExponentialSmoothingForecast(object):
 				if value.get(period.key) and not forecast_data:
 					value[forecast_key] = flt(value.get("avg", 0)) or flt(value.get(period.key))
 
-					# will be use to forecaset next period
-					forecast_data.append([value.get(period.key), value.get(forecast_key)])
 				elif forecast_data:
 					previous_period_data = forecast_data[-1]
 					value[forecast_key] = (previous_period_data[1] +
@@ -30,6 +28,10 @@ class ExponentialSmoothingForecast(object):
 							flt(previous_period_data[0]) - flt(previous_period_data[1])
 						)
 					)
+
+				if value.get(forecast_key):
+					# will be use to forecaset next period
+					forecast_data.append([value.get(period.key), value.get(forecast_key)])
 
 class ForecastingReport(ExponentialSmoothingForecast):
 	def __init__(self, filters=None):
@@ -45,7 +47,7 @@ class ForecastingReport(ExponentialSmoothingForecast):
 	def execute_report(self):
 		self.prepare_periodical_data()
 		self.forecast_future_data()
-		self.data = self.period_wise_data.values()
+		self.prepare_final_data()
 		self.add_total()
 
 		columns = self.get_columns()
@@ -78,7 +80,9 @@ class ForecastingReport(ExponentialSmoothingForecast):
 			list_of_period_value = [value.get(p.key, 0) for p in self.period_list]
 
 			if list_of_period_value:
-				value["avg"] = sum(list_of_period_value) / len(list_of_period_value)
+				total_qty = [1 for d in list_of_period_value if d]
+				if total_qty:
+					value["avg"] = flt(sum(list_of_period_value)) / flt(sum(total_qty))
 
 	def get_data_for_forecast(self):
 		cond = ""
@@ -108,7 +112,17 @@ class ForecastingReport(ExponentialSmoothingForecast):
 		""".format(doc=self.doctype, child_doc=self.child_doctype, date_field=date_field, cond=cond),
 			tuple(input_data), as_dict=1)
 
+	def prepare_final_data(self):
+		self.data = []
+
+		if not self.period_wise_data: return
+
+		for key in self.period_wise_data:
+			self.data.append(self.period_wise_data.get(key))
+
 	def add_total(self):
+		if not self.data: return
+
 		total_row = {
 			"item_code": _(frappe.bold("Total Quantity"))
 		}
@@ -142,15 +156,19 @@ class ForecastingReport(ExponentialSmoothingForecast):
 			"width": 130
 		}]
 
-		width = 150 if self.filters.periodicity in ['Yearly', "Half-Yearly", "Quarterly"] else 100
+		width = 180 if self.filters.periodicity in ['Yearly', "Half-Yearly", "Quarterly"] else 100
 		for period in self.period_list:
 			if (self.filters.periodicity in ['Yearly', "Half-Yearly", "Quarterly"]
 				or period.from_date >= getdate(self.filters.from_date)):
 
-				forecast_key = 'forecast_' + period.key
+				forecast_key = period.key
+				label = _(period.label)
+				if period.from_date >= getdate(self.filters.from_date):
+					forecast_key = 'forecast_' + period.key
+					label = _(period.label) + " " + _("(Forecast)")
 
 				columns.append({
-					"label": _(period.label),
+					"label": label,
 					"fieldname": forecast_key,
 					"fieldtype": self.fieldtype,
 					"width": width,
@@ -199,6 +217,8 @@ class ForecastingReport(ExponentialSmoothingForecast):
 		}
 
 	def get_summary_data(self):
+		if not self.data: return
+
 		return [
 			{
 				"value": sum(self.total_demand),
