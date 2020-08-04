@@ -17,6 +17,9 @@
   "allow_appointments",
   "overlap_appointments",
   "total_service_unit_capacity",
+  "is_modality",
+  "modality_type",
+  "modality_name",
   "inpatient_occupancy",
   "occupancy_status",
   "column_break_9",
@@ -198,10 +201,38 @@
   },
   {
    "bold": 1,
+   "depends_on": "eval:doc.is_group != 1 && doc.allow_appointments == 1 && doc.overlap_appointments == 1 && doc.inpatient_occupany != 1",
    "fieldname": "total_service_unit_capacity",
    "fieldtype": "Int",
-   "label": "Total Service Unit Capacity",
-   "mandatory_depends_on": "eval:doc.overlap_appointments == 1"
+   "mandatory_depends_on": "eval:doc.overlap_appointments == 1",
+   "label": "Total Service Unit Capacity"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "default": "0",
+   "depends_on": "eval:doc.is_group != 1 && doc.allow_appointments == 1 && doc.inpatient_occupany != 1 && doc.overlap_appointments != 1",
+   "fieldname": "is_modality",
+   "fieldtype": "Check",
+   "label": "Is Modality"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "depends_on": "is_modality",
+   "fetch_from": "service_unit_type.modality_type",
+   "fetch_if_empty": 1,
+   "fieldname": "modality_type",
+   "fieldtype": "Link",
+   "label": "Modality Type",
+   "options": "Modality Type"
+  },
+  {
+   "allow_in_quick_entry": 1,
+   "depends_on": "is_modality",
+   "fetch_from": "service_unit_type.modality_name",
+   "fetch_if_empty": 1,
+   "fieldname": "modality_name",
+   "fieldtype": "Data",
+   "label": "Modality Name"
   }
  ],
  "links": [],

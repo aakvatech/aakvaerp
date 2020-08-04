@@ -48,5 +48,19 @@ frappe.ui.form.on('Healthcare Service Unit', {
 		if(frm.doc.overlap_appointments == 0){
 			frm.set_value('total_service_unit_capacity', '');
 		}
+		else {
+			frm.set_value('is_modality', false);
+		}
+	},
+	is_modality: function(frm) {
+		if(frm.doc.is_modality == 1){
+			frm.set_value('overlap_appointments', false);
+			frm.set_df_property('modality_type', 'reqd', true);
+			frm.set_df_property('modality_name', 'reqd', true);
+		}
+		else {
+			frm.set_df_property('modality_type', 'reqd', false);
+			frm.set_df_property('modality_name', 'reqd', false);
+		}
 	}
 });
