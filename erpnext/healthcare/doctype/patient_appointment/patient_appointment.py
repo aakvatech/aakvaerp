@@ -318,8 +318,6 @@ def get_available_slots(practitioner_doc, date):
 					if not allow_overlap:
 						# fetch all appointments to service unit
 						filters.pop('practitioner')
-					if service_unit_capacity:
-						slot_name  = schedule_entry.schedule + ' - ' + schedule_entry.service_unit + ' ( capacity - ' + str(service_unit_capacity) + ' ) '
 				else:
 					slot_name = schedule_entry.schedule
 					# fetch all appointments to practitioner without service unit

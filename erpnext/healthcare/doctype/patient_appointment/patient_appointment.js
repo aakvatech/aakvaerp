@@ -339,7 +339,7 @@ let check_and_set_availability = function(frm) {
 								});
 								let count=''
 								if(slot_details[i].allow_overlap==1 && slot_details[i].service_unit_capacity>1){
-									count=" - "+appointment_count
+									count=" - "+(slot_details[i].service_unit_capacity - appointment_count)
 									// document.getElementById("count").style.fontSize = "xx-large";
 								}
 								return `<button class="btn btn-default"
