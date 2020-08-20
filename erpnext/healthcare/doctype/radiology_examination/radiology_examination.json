@@ -7,6 +7,7 @@
  "engine": "InnoDB",
  "field_order": [
   "naming_series",
+  "title",
   "appointment_details_html",
   "patient",
   "patient_name",
@@ -199,11 +200,20 @@
   {
    "fieldname": "column_break_23",
    "fieldtype": "Column Break"
+  },
+  {
+   "allow_on_submit": 1,
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "no_copy": 1,
+   "print_hide": 1,
+   "read_only": 1
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2020-08-09 12:13:00.565565",
+ "modified": "2020-08-12 15:25:21.446270",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Radiology Examination",
@@ -224,5 +234,6 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "title_field": "title",
  "track_changes": 1
 }
