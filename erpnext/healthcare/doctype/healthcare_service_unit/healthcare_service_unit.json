@@ -197,7 +197,7 @@
    "label": "Tree Details"
   },
   {
-   "depends_on": "eval:doc.is_group != 1 && doc.allow_appointments == 1 && doc.overlap_appointments == 1 && doc.inpatient_occupany != 1",
+   "bold": 1,
    "fieldname": "total_service_unit_capacity",
    "fieldtype": "Int",
    "label": "Total Service Unit Capacity",
@@ -205,7 +205,7 @@
   }
  ],
  "links": [],
- "modified": "2020-08-12 18:56:50.709030",
+ "modified": "2020-08-22 17:35:44.249108",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Healthcare Service Unit",
