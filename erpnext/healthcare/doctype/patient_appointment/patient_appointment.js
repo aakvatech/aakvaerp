@@ -292,7 +292,7 @@ let check_and_set_availability = function(frm) {
 				},
 				callback: (r) => {
 					let data = r.message;
-					if (data.slot_details.length > 0) {
+					if (data.slot_details.length > 0 || data.present_events.length > 0) {
 						let $wrapper = d.fields_dict.available_slots.$wrapper;
 
 						// make buttons for each slot
@@ -307,6 +307,15 @@ let check_and_set_availability = function(frm) {
 								let slot_start_time = moment(slot.from_time, 'HH:mm:ss');
 								let slot_to_time = moment(slot.to_time, 'HH:mm:ss');
 								let interval = (slot_to_time - slot_start_time)/60000 | 0;
+								//checking current time in solt
+								var today = frappe.datetime.nowdate();
+								if(today == d.get_value('appointment_date')){
+									// disable before  current  time in current date
+									var curr_time= moment(frappe.datetime.now_time(), 'HH:mm:ss');
+									if(slot_start_time.isBefore(curr_time)){
+										disabled = true;
+									}
+								}
 								// iterate in all booked appointments, update the start time and duration
 								slot_details[i].appointments.forEach(function(booked) {
 									let booked_moment = moment(booked.appointment_time, 'HH:mm:ss');
@@ -337,10 +346,20 @@ let check_and_set_availability = function(frm) {
 										}
 									}
 								});
+								//iterate in all absent events and disable the slots
+								slot_details[i].absent_events.forEach(function(event) {
+									let event_from_time = moment(event.from_time, 'HH:mm:ss');
+									let event_to_time = moment(event.to_time, 'HH:mm:ss');
+									// Check for overlaps considering event start and end time
+									if(slot_start_time.isBefore(event_to_time) && slot_to_time.isAfter(event_from_time)){
+										// There is an overlap
+										disabled = true;
+										return false;
+									}
+								});
 								let count=''
-								if(slot_details[i].allow_overlap==1 && slot_details[i].service_unit_capacity>1){
-									count=" - "+(slot_details[i].service_unit_capacity - appointment_count)
-									// document.getElementById("count").style.fontSize = "xx-large";
+								if(slot_details[i].allow_overlap == 1 && slot_details[i].service_unit_capacity > 1){
+									count = '' - ''+(slot_details[i].service_unit_capacity - appointment_count)
 								}
 								return `<button class="btn btn-default"
 									data-name=${start_str}
@@ -351,6 +370,87 @@ let check_and_set_availability = function(frm) {
 								</button>`;
 							}).join("");
 							slot_html = slot_html + `<br/>`;
+						}
+
+						if(data.present_events && data.present_events.length > 0){
+							slot_html = slot_html + `<br/>`;
+							var present_events = data.present_events
+							for (let i = 0; i < present_events.length; i++) {
+
+								slot_html = slot_html + `<label>${present_events[i].slot_name}</label>`;
+								slot_html = slot_html + `<br/>` + present_events[i].avail_slot.map(slot => {
+									let appointment_count = 0;
+									let disabled = false;
+									let start_str = slot.from_time;
+									let slot_start_time = moment(slot.from_time, 'HH:mm:ss');
+									let slot_to_time = moment(slot.to_time, 'HH:mm:ss');
+									let interval = (slot_to_time - slot_start_time)/60000 | 0;
+									//checking current time in solt
+									var today = frappe.datetime.nowdate();
+									if(today == d.get_value('appointment_date')){
+										// disable before  current  time in current date
+										var curr_time= moment(frappe.datetime.now_time(), 'HH:mm:ss');
+										if(slot_start_time.isBefore(curr_time)){
+											disabled = true;
+										}
+									}
+									//iterate in all booked appointments, update the start time and duration
+									present_events[i].appointments.forEach(function(booked) {
+										let booked_moment = moment(booked.appointment_time, 'HH:mm:ss');
+										let end_time = booked_moment.clone().add(booked.duration, 'minutes');
+										// Deal with 0 duration appointments
+										if (booked_moment.isSame(slot_start_time) || booked_moment.isBetween(slot_start_time, slot_to_time)) {
+											if(booked.duration == 0){
+												disabled = true;
+												return false;
+											}
+										}
+										// Check for overlaps considering appointment duration
+										if(present_events[i].allow_overlap != 1){
+											if (slot_start_time.isBefore(end_time) && slot_to_time.isAfter(booked_moment)) {
+												// There is an overlap
+												disabled = true;
+												return false;
+											}
+										}
+										else{
+											if(slot_start_time.isBefore(end_time) && slot_to_time.isAfter(booked_moment)){
+												appointment_count++
+											}
+											if(appointment_count>=present_events[i].service_unit_capacity){
+												// There is an overlap
+												disabled = true;
+												return false;
+											}
+										}
+									});
+									//iterate in all absent events and disable the slots
+									present_events[i].absent_events.forEach(function(event) {
+										let event_from_time = moment(event.from_time, 'HH:mm:ss');
+										let event_to_time = moment(event.to_time, 'HH:mm:ss');
+										// Check for overlaps considering event start and end time
+										if(slot_start_time.isBefore(event_to_time) && slot_to_time.isAfter(event_from_time)){
+											// There is an overlap
+											disabled = true;
+											return false;
+										}
+									});
+									let count=''
+									if(present_events[i].allow_overlap == 1 && present_events[i].service_unit_capacity > 1){
+										count=''- ''+(present_events[i].service_unit_capacity - appointment_count)
+									}
+									return `<button class="btn btn-default"
+										data-name=${start_str}
+										data-duration=${interval}
+										data-service-unit="${present_events[i].service_unit || ''}"
+										data-event="${present_events[i].event||''}"
+										flag-fixed-duration=${1}
+										style="margin: 0 10px 10px 0; width: 72px;" ${ disabled ? 'disabled="disabled"' : "" }>
+										${start_str.substring(0, start_str.length - 3)} ${count}
+									</button>`;
+								}).join("");
+								slot_html = slot_html + `<br/>`;
+							}
 						}
 
 						$wrapper
