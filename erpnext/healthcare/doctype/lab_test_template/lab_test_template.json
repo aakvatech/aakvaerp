@@ -14,11 +14,15 @@
   "lab_test_code",
   "lab_test_group",
   "department",
+  "cpoe_category",
+  "patient_care_type",
+  "staff_role",
   "column_break_3",
   "disabled",
   "lab_test_template_type",
   "is_billable",
   "lab_test_rate",
+  "healthcare_service_unit_type",
   "section_break_description",
   "lab_test_description",
   "section_break_normal",
@@ -311,10 +315,37 @@
    "fieldname": "descriptive_test_templates",
    "fieldtype": "Table",
    "options": "Descriptive Test Template"
+  },
+  {
+   "fieldname": "cpoe_category",
+   "fieldtype": "Link",
+   "label": "CPOE Category",
+   "options": "CPOE Category",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "cpoe_category.patient_care_type",
+   "fieldname": "patient_care_type",
+   "fieldtype": "Link",
+   "label": "Patient Care Type",
+   "options": "Patient Care Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "staff_role",
+   "fieldtype": "Link",
+   "label": "Staff Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "healthcare_service_unit_type",
+   "fieldtype": "Link",
+   "label": "Healthcare Service Unit Type",
+   "options": "Healthcare Service Unit Type"
   }
  ],
  "links": [],
- "modified": "2020-07-13 12:57:09.925436",
+ "modified": "2020-08-20 17:13:38.756644",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Lab Test Template",
