@@ -762,3 +762,19 @@ def delete_medical_record(reference_doc, reference_name):
 		where
 			reference_doctype = %s and reference_name = %s"""
 	frappe.db.sql(query, (reference_doc, reference_name))
+
+def update_address_link(address, method):
+	# Healthcare Service Invoice.
+	domain_settings = frappe.get_doc('Domain Settings')
+	active_domains = [d.domain for d in domain_settings.active_domains]
+
+	if "Healthcare" in active_domains:
+		address_patient = None
+		for link in address.links:
+			if link.link_doctype == 'Patient':
+				address_patient = link.link_name
+		if address_patient:
+			customer = frappe.db.get_value('Patient', address_patient, 'customer')
+			if not address.has_link('Customer', customer):
+				address.append('links', dict(link_doctype = 'Customer', link_name = customer))
+				address.save()
