@@ -10,6 +10,13 @@ frappe.ui.form.on('Inpatient Record', {
 			{fieldname: 'period', columns: 2}
 		];
 	},
+
+	onload:function (frm) {
+		if(frm.doc.source){
+			set_source_referring_practitioner(frm)
+		}
+	},
+
 	refresh: function(frm) {
 		if (!frm.doc.__islocal && (frm.doc.status == 'Admission Scheduled' || frm.doc.status == 'Admitted')) {
 			frm.enable_save();
@@ -34,10 +41,35 @@ frappe.ui.form.on('Inpatient Record', {
 		} else {
 			frm.set_df_property('btn_transfer', 'hidden', 0);
 		}
+
+		frm.set_query('referring_practitioner', function() {
+			if(frm.doc.source == 'External Referral'){
+				return {
+					filters: {
+						'healthcare_practitioner_type': 'External'
+					}
+				};
+			}
+			else{
+				return {
+					filters: {
+						'healthcare_practitioner_type': 'Internal'
+					}
+				};
+			}
+		});
+
 	},
 	btn_transfer: function(frm) {
 		transfer_patient_dialog(frm);
+	},
+
+	source: function(frm){
+		if(frm.doc.source){
+			set_source_referring_practitioner(frm);
+		}
 	}
+
 });
 
 let discharge_patient = function(frm) {
@@ -134,7 +166,7 @@ let transfer_patient_dialog = function(frm) {
 			{fieldtype: 'Link', label: 'Leave From', fieldname: 'leave_from', options: 'Healthcare Service Unit', reqd: 1, read_only:1},
 			{fieldtype: 'Link', label: 'Service Unit Type', fieldname: 'service_unit_type', options: 'Healthcare Service Unit Type'},
 			{fieldtype: 'Link', label: 'Transfer To', fieldname: 'service_unit', options: 'Healthcare Service Unit', reqd: 1},
-			{fieldtype: 'Datetime', label: 'Check In', fieldname: 'check_in', reqd: 1}
+			{fieldtype: 'Datetime', label: 'Check In', fieldname: 'check_in', reqd: 1, default: frappe.datetime.now_datetime()}
 		],
 		primary_action_label: __('Transfer'),
 		primary_action : function() {
@@ -147,7 +179,12 @@ let transfer_patient_dialog = function(frm) {
 			if(dialog.get_value('service_unit')){
 				service_unit = dialog.get_value('service_unit');
 			}
-			if(!check_in){
+			if(check_in > frappe.datetime.now_datetime()){
+				frappe.msgprint({
+					title: __('Not Allowed'),
+					message: __('Check-in time cannot be greater than the current time'),
+					indicator: 'red'
+				});
 				return;
 			}
 			frappe.call({
@@ -206,4 +243,46 @@ let transfer_patient_dialog = function(frm) {
 	dialog.set_values({
 		'leave_from': not_left_service_unit
 	});
+};
+
+let set_source_referring_practitioner = function (frm) {
+	if(frm.doc.source == 'Direct'){
+		frm.set_value('referring_practitioner', '');
+		frm.set_df_property('referring_practitioner', 'hidden', 1);
+		frm.set_df_property('referring_practitioner', 'reqd', 0);
+	}
+	else if(frm.doc.source == 'External Referral' || frm.doc.source == 'Referral') {
+		if(frm.doc.primary_practitioner){
+			frm.set_df_property('referring_practitioner', 'hidden', 0);
+			if(frm.doc.source=='External Referral'){
+				frappe.db.get_value('Healthcare Practitioner', frm.doc.primary_practitioner, 'healthcare_practitioner_type', function(r) {
+					if(r && r.healthcare_practitioner_type && r.healthcare_practitioner_type == 'External'){
+						frm.set_value('referring_practitioner', frm.doc.primary_practitioner);
+					}
+					else{
+						frm.set_value('referring_practitioner', '');
+					}
+				});
+				frm.set_df_property('referring_practitioner', 'read_only', 0);
+			}
+			else{
+				frappe.db.get_value('Healthcare Practitioner', frm.doc.primary_practitioner, 'healthcare_practitioner_type', function(r) {
+					if(r && r.healthcare_practitioner_type && r.healthcare_practitioner_type == 'Internal'){
+						frm.set_value('referring_practitioner', frm.doc.primary_practitioner);
+						frm.set_df_property('referring_practitioner', 'read_only', 1);
+					}
+					else{
+						frm.set_value('referring_practitioner', '');
+						frm.set_df_property('referring_practitioner', 'read_only', 0);
+					}
+				});
+			}
+			frm.set_df_property('referring_practitioner', 'reqd', 1);
+		}
+		else{
+			frm.set_df_property('referring_practitioner', 'read_only', 0);
+			frm.set_df_property('referring_practitioner', 'hidden', 0);
+			frm.set_df_property('referring_practitioner', 'reqd', 1);
+		}
+	}
 };

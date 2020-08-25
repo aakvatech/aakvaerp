@@ -18,7 +18,26 @@
   "usage_interval",
   "interval",
   "interval_uom",
-  "update_schedule"
+  "update_schedule",
+  "reason_section",
+  "reason",
+  "replaces",
+  "column_break_15",
+  "reason_reference_doctype",
+  "reason_reference",
+  "order_details_section",
+  "intent",
+  "quantity",
+  "sequence",
+  "expected_date",
+  "as_needed",
+  "patient_instruction",
+  "column_break_25",
+  "priority",
+  "occurrence",
+  "occurence_period",
+  "body_part",
+  "note"
  ],
  "fields": [
   {
@@ -27,17 +46,18 @@
    "ignore_user_permissions": 1,
    "in_list_view": 1,
    "label": "Drug",
-   "options": "Item",
+   "options": "Medication",
    "reqd": 1
   },
   {
-   "fetch_from": "drug_code.item_name",
+   "fetch_from": "drug_code.medication_name",
    "fieldname": "drug_name",
    "fieldtype": "Data",
    "in_list_view": 1,
    "label": "Drug Name / Description"
   },
   {
+   "fetch_from": "drug_code.default_prescription_dosage",
    "fieldname": "dosage",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -46,6 +66,7 @@
    "options": "Prescription Dosage"
   },
   {
+   "fetch_from": "drug_code.default_prescription_duration",
    "fieldname": "period",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -54,6 +75,7 @@
    "options": "Prescription Duration"
   },
   {
+   "fetch_from": "drug_code.default_dosage_form",
    "fieldname": "dosage_form",
    "fieldtype": "Link",
    "ignore_user_permissions": 1,
@@ -100,11 +122,112 @@
    "fieldname": "usage_interval",
    "fieldtype": "Check",
    "label": "Dosage by Time Interval"
+  },
+  {
+   "fieldname": "reason_section",
+   "fieldtype": "Section Break",
+   "label": "Reason"
+  },
+  {
+   "fieldname": "reason",
+   "fieldtype": "Link",
+   "label": "Reason",
+   "options": "CPOE Reason"
+  },
+  {
+   "fieldname": "replaces",
+   "fieldtype": "Link",
+   "label": "Replaces",
+   "options": "CPOE"
+  },
+  {
+   "fieldname": "column_break_15",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "reason_reference_doctype",
+   "fieldtype": "Link",
+   "label": "Reason Reference DocType",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "reason_reference",
+   "fieldtype": "Dynamic Link",
+   "label": "Reason Reference",
+   "options": "reason_reference_doctype"
+  },
+  {
+   "fieldname": "order_details_section",
+   "fieldtype": "Section Break",
+   "label": "Order Details"
+  },
+  {
+   "fieldname": "intent",
+   "fieldtype": "Select",
+   "label": "Intent",
+   "options": "Proposal\nPlan\nDirective\nOrder\nOriginal Order\nReflex Order\nFiller Order\nInstance Order\nOption"
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Int",
+   "label": "Quantity"
+  },
+  {
+   "fieldname": "sequence",
+   "fieldtype": "Int",
+   "label": "Sequence in Order Group"
+  },
+  {
+   "fieldname": "expected_date",
+   "fieldtype": "Date",
+   "label": "Expected Date"
+  },
+  {
+   "default": "0",
+   "fieldname": "as_needed",
+   "fieldtype": "Check",
+   "label": "As Needed"
+  },
+  {
+   "fieldname": "patient_instruction",
+   "fieldtype": "Small Text",
+   "label": "Patient Instruction"
+  },
+  {
+   "fieldname": "column_break_25",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "priority",
+   "fieldtype": "Link",
+   "label": "Priority",
+   "options": "CPOE Reason"
+  },
+  {
+   "fieldname": "occurrence",
+   "fieldtype": "Datetime",
+   "label": "Occurrence"
+  },
+  {
+   "fieldname": "occurence_period",
+   "fieldtype": "Duration",
+   "label": "Occurence Period"
+  },
+  {
+   "fieldname": "body_part",
+   "fieldtype": "Link",
+   "label": "Body Part",
+   "options": "Body Part"
+  },
+  {
+   "fieldname": "note",
+   "fieldtype": "Small Text",
+   "label": "Note"
   }
  ],
  "istable": 1,
  "links": [],
- "modified": "2020-02-26 17:02:42.741338",
+ "modified": "2020-08-20 20:20:38.127800",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Drug Prescription",

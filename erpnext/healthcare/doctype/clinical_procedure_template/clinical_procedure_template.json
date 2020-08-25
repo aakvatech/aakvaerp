@@ -20,7 +20,11 @@
   "disabled",
   "is_billable",
   "rate",
+  "cpoe_category",
+  "patient_care_type",
+  "staff_role",
   "medical_department",
+  "healthcare_service_unit_type",
   "medical_coding_section",
   "medical_code_standard",
   "medical_code",
@@ -194,10 +198,37 @@
    "fieldtype": "Link",
    "label": "Medical Code",
    "options": "Medical Code"
+  },
+  {
+   "fieldname": "cpoe_category",
+   "fieldtype": "Link",
+   "label": "CPOE Category",
+   "options": "CPOE Category",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "cpoe_category.patient_care_type",
+   "fieldname": "patient_care_type",
+   "fieldtype": "Link",
+   "label": "Patient Care Type",
+   "options": "Patient Care Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "staff_role",
+   "fieldtype": "Link",
+   "label": "Staff Role",
+   "options": "Role"
+  },
+  {
+   "fieldname": "healthcare_service_unit_type",
+   "fieldtype": "Link",
+   "label": "Healthcare Service Unit Type",
+   "options": "Healthcare Service Unit Type"
   }
  ],
  "links": [],
- "modified": "2020-06-29 14:12:27.158130",
+ "modified": "2020-08-20 17:13:21.861062",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Clinical Procedure Template",
