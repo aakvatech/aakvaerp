@@ -34,6 +34,10 @@
   "physical_examination",
   "diagnosis",
   "diagnosis_in_print",
+  "sb_source",
+  "source",
+  "column_break_27",
+  "referring_practitioner",
   "codification",
   "codification_table",
   "sb_drug_prescription",
@@ -324,11 +328,35 @@
    "no_copy": 1,
    "print_hide": 1,
    "read_only": 1
+  },
+  {
+   "fieldname": "sb_source",
+   "fieldtype": "Section Break",
+   "label": "Source"
+  },
+  {
+   "fieldname": "source",
+   "fieldtype": "Select",
+   "label": "Source",
+   "options": "Direct\nReferral\nExternal Referral",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_27",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "referring_practitioner",
+   "fieldtype": "Link",
+   "hidden": 1,
+   "ignore_user_permissions": 1,
+   "label": "Referring Practitioner",
+   "options": "Healthcare Practitioner"
   }
  ],
  "is_submittable": 1,
  "links": [],
- "modified": "2020-05-16 21:00:08.644531",
+ "modified": "2020-06-25 22:38:05.531033",
  "modified_by": "Administrator",
  "module": "Healthcare",
  "name": "Patient Encounter",
