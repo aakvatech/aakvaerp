@@ -3,6 +3,7 @@
 
 erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 	setup: function() {
+		frappe.flags.hide_serial_batch_dialog = true
 		this._super();
 		frappe.ui.form.on(this.frm.doctype + " Item", "rate", function(frm, cdt, cdn) {
 			var item = frappe.get_doc(cdt, cdn);
@@ -155,6 +156,26 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 				return {
 					filters: filters
+				};
+			});
+		}
+		if (this.frm.fields_dict["items"].grid.get_field("cost_center")) {
+			this.frm.set_query("cost_center", "items", function(doc) {
+				return {
+					filters: {
+						"company": doc.company,
+						"is_group": 0
+					}
+				};
+			});
+		}
+
+		if (this.frm.fields_dict["items"].grid.get_field("expense_account")) {
+			this.frm.set_query("expense_account", "items", function(doc) {
+				return {
+					filters: {
+						"company": doc.company
+					}
 				};
 			});
 		}
@@ -534,6 +555,12 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 								},
 								() => me.frm.script_manager.trigger("price_list_rate", cdt, cdn),
 								() => me.toggle_conversion_factor(item),
+								() => {
+									if (show_batch_dialog && !item.has_serial_no
+										&& !item.has_batch_no) {
+										show_batch_dialog = false;
+									}
+								},
 								() => {
 									if (show_batch_dialog)
 										return frappe.db.get_value("Item", item.item_code, ["has_batch_no", "has_serial_no"])
@@ -1386,9 +1413,9 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 
 			if (data && data.apply_rule_on_other_items) {
 				me.frm.doc.items.forEach(d => {
-					if (in_list(data.apply_rule_on_other_items, d[data.apply_rule_on])) {
+					if (in_list(JSON.parse(data.apply_rule_on_other_items), d[data.apply_rule_on])) {
 						for(var k in data) {
-							if (in_list(fields, k) && data[k] && (data.price_or_product_discount === 'price' || k === 'pricing_rules')) {
+							if (in_list(fields, k) && data[k] && (data.price_or_product_discount === 'Price' || k === 'pricing_rules')) {
 								frappe.model.set_value(d.doctype, d.name, k, data[k]);
 							}
 						}
@@ -1472,9 +1499,9 @@ erpnext.TransactionController = erpnext.taxes_and_totals.extend({
 			me.frm.doc.items = items;
 			refresh_field('items');
 		} else if(item.applied_on_items && item.apply_on) {
-			const applied_on_items = item.applied_on_items.split(',');
+			const applied_on_items = JSON.parse(item.applied_on_items);
 			me.frm.doc.items.forEach(row => {
-				if(applied_on_items.includes(row[item.apply_on])) {
+				if(in_list(applied_on_items, row[item.apply_on])) {
 					fields.forEach(f => {
 						row[f] = 0;
 					});
