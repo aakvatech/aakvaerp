@@ -56,7 +56,7 @@ def get_data(filters):
 	accounts = frappe.db.sql("""select name, account_number, parent_account, account_name, root_type, report_type, lft, rgt
 
 		from `tabAccount` where company=%s order by lft""", filters.company, as_dict=True)
-	company_currency = erpnext.get_company_currency(filters.company)
+	company_currency = filters.presentation_currency or erpnext.get_company_currency(filters.company)
 
 	if not accounts:
 		return None
@@ -152,6 +152,7 @@ def get_rootwise_opening_balances(filters, report_type):
 			{additional_conditions}
 			and (posting_date < %(from_date)s or ifnull(is_opening, 'No') = 'Yes')
 			and account in (select name from `tabAccount` where report_type=%(report_type)s)
+			and is_cancelled = 0
 		group by account""".format(additional_conditions=additional_conditions), query_filters , as_dict=True)
 
 	opening = frappe._dict()
