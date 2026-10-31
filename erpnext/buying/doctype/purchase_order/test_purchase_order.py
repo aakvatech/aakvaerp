@@ -1773,6 +1773,70 @@ class TestPurchaseOrder(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("Sales Order", so.name, "per_delivered"), 100)
 
 	@change_settings("Buying Settings", {"allow_zero_qty_in_purchase_order": 1, "maintain_same_rate": 0})
+	@change_settings("Buying Settings", {"maintain_same_rate": 0})
+	def test_amount_based_non_stock_service_partial_billing(self):
+		service = make_item(
+			"_Test Amount Based Contract Labour",
+			{"is_stock_item": 0, "is_purchase_item": 1},
+		).name
+		po = create_purchase_order(item_code=service, qty=1, rate=1000, do_not_save=True)
+		po.items[0].billing_basis = "Amount"
+		po.submit()
+
+		first = make_pi_from_po(po.name)
+		first.items[0].rate = 400
+		first.submit()
+
+		po.reload()
+		self.assertEqual(flt(po.per_billed), 40)
+		self.assertEqual(flt(po.items[0].billed_amt), 400)
+
+		second = make_pi_from_po(po.name)
+		self.assertEqual(len(second.items), 1)
+		self.assertEqual(second.items[0].po_detail, po.items[0].name)
+		self.assertEqual(second.items[0].qty, 0)
+		second.items[0].qty = 1
+		second.items[0].rate = 600
+		second.submit()
+
+		po.reload()
+		self.assertEqual(flt(po.per_billed), 100)
+		self.assertRaisesRegex(
+			frappe.ValidationError,
+			"No items available to bill",
+			make_pi_from_po,
+			po.name,
+		)
+
+	def test_amount_based_billing_rejects_stock_items(self):
+		stock = make_item(
+			"_Test Amount Based Stock Item",
+			{"is_stock_item": 1},
+		).name
+		po = create_purchase_order(item_code=stock, qty=1, rate=1000, do_not_save=True)
+		po.items[0].billing_basis = "Amount"
+		self.assertRaisesRegex(
+			frappe.ValidationError, "only available for non-stock items", po.insert
+		)
+
+	@change_settings("Buying Settings", {"maintain_same_rate": 0})
+	def test_qty_based_service_does_not_bill_remaining_amount(self):
+		service = make_item(
+			"_Test Quantity Based Service for Billing",
+			{"is_stock_item": 0, "is_purchase_item": 1},
+		).name
+		po = create_purchase_order(item_code=service, qty=1, rate=1000)
+		first = make_pi_from_po(po.name)
+		first.items[0].rate = 400
+		first.submit()
+
+		self.assertRaisesRegex(
+			frappe.ValidationError,
+			"No items available to bill",
+			make_pi_from_po,
+			po.name,
+		)
+
 	def test_purchase_invoice_mapper_skips_billed_qty(self):
 		unit_price_po = create_purchase_order(qty=0)
 		pi = make_pi_from_po(unit_price_po.name)
