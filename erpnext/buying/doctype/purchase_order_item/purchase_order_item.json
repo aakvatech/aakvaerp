@@ -25,6 +25,7 @@
   "image_view",
   "quantity_and_rate",
   "qty",
+  "billing_basis",
   "stock_uom",
   "subcontracted_quantity",
   "col_break2",
@@ -222,6 +223,15 @@
    "print_width": "60px",
    "reqd": 1,
    "width": "60px"
+  },
+  {
+   "allow_on_submit": 1,
+   "default": "Quantity",
+   "description": "Use Amount for lump-sum non-stock services billed in installments. Quantity billing remains the default.",
+   "fieldname": "billing_basis",
+   "fieldtype": "Select",
+   "label": "Billing Basis",
+   "options": "Quantity\nAmount"
   },
   {
    "depends_on": "eval:doc.uom != doc.stock_uom",
