@@ -1772,7 +1772,6 @@ class TestPurchaseOrder(FrappeTestCase):
 		self.assertEqual(frappe.db.get_value("Sales Order Item", so.items[0].name, "delivered_qty"), 2)
 		self.assertEqual(frappe.db.get_value("Sales Order", so.name, "per_delivered"), 100)
 
-	@change_settings("Buying Settings", {"allow_zero_qty_in_purchase_order": 1, "maintain_same_rate": 0})
 	@change_settings("Buying Settings", {"maintain_same_rate": 0})
 	def test_amount_based_non_stock_service_partial_billing(self):
 		service = make_item(
@@ -1837,6 +1836,7 @@ class TestPurchaseOrder(FrappeTestCase):
 			po.name,
 		)
 
+	@change_settings("Buying Settings", {"allow_zero_qty_in_purchase_order": 1, "maintain_same_rate": 0})
 	def test_purchase_invoice_mapper_skips_billed_qty(self):
 		unit_price_po = create_purchase_order(qty=0)
 		pi = make_pi_from_po(unit_price_po.name)
