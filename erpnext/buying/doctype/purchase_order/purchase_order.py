@@ -208,6 +208,7 @@ class PurchaseOrder(BuyingController):
 		self.validate_supplier()
 		self.validate_schedule_date()
 		validate_for_items(self)
+		self.validate_billing_basis()
 		self.check_on_hold_or_closed_status()
 
 		self.validate_uom_is_integer("uom", "qty")
@@ -229,6 +230,17 @@ class PurchaseOrder(BuyingController):
 		)
 		self.reset_default_field_value("set_warehouse", "items", "warehouse")
 		self.set_missing_terms()
+
+	def validate_billing_basis(self):
+		for row in self.items:
+			if row.billing_basis == "Amount" and frappe.get_cached_value(
+				"Item", row.item_code, "is_stock_item"
+			):
+				frappe.throw(
+					_("Row #{0}: Amount-based billing is only available for non-stock items").format(
+						row.idx
+					)
+				)
 
 	def set_has_unit_price_items(self):
 		"""
@@ -833,6 +845,8 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 
 	def postprocess(source, target):
 		target.flags.ignore_permissions = ignore_permissions
+		if not target.get("items"):
+			frappe.throw(_("No items available to bill for Purchase Order {0}").format(source.name))
 		set_missing_values(source, target)
 
 		# set tax_withholding_category from Purchase Order
@@ -858,10 +872,12 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 		return billed_qty + flt(mapped_qty_by_item.get(po_item.name, 0))
 
 	def update_item(obj, target, source_parent):
+		pending_qty = flt(obj.qty) - get_billed_and_mapped_qty(obj)
 		target.qty = (
 			0
 			if is_unit_price_row(obj, has_unit_price_items)
-			else flt(obj.qty) - get_billed_and_mapped_qty(obj)
+			or (obj.billing_basis == "Amount" and pending_qty <= 0)
+			else pending_qty
 		)
 
 		item = get_item_defaults(target.item_code, source_parent.company)
@@ -903,7 +919,14 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 			"condition": lambda doc: (
 				doc.name not in mapped_qty_by_item
 				if is_unit_price_row(doc, has_unit_price_items)
-				else doc.qty > get_billed_and_mapped_qty(doc)
+				else (
+					doc.qty > get_billed_and_mapped_qty(doc)
+					or (
+						doc.name not in mapped_qty_by_item
+						and doc.billing_basis == "Amount"
+						and flt(doc.billed_amt) < flt(doc.amount)
+					)
+				)
 			)
 			and select_item(doc),
 		},
