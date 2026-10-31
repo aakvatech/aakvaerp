@@ -920,12 +920,12 @@ def get_mapped_purchase_invoice(source_name, target_doc=None, ignore_permissions
 				doc.name not in mapped_qty_by_item
 				if is_unit_price_row(doc, has_unit_price_items)
 				else (
-					doc.qty > get_billed_and_mapped_qty(doc)
-					or (
+					(
 						doc.name not in mapped_qty_by_item
-						and doc.billing_basis == "Amount"
-						and flt(doc.billed_amt) < flt(doc.amount)
+						and flt(doc.billed_amt, doc.precision("billed_amt")) < flt(doc.amount, doc.precision("amount"))
 					)
+					if doc.billing_basis == "Amount"
+					else doc.qty > get_billed_and_mapped_qty(doc)
 				)
 			)
 			and select_item(doc),
